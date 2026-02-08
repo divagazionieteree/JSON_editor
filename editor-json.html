@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor JSON Interattivo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 25px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        header h1 {
+            color: #333;
+            font-size: 1.6em;
+            margin-bottom: 4px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .upload-section {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .file-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-label input[type="file"] {
+            display: none;
+        }
+
+        .file-icon {
+            font-size: 1.3em;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #c33;
+            font-size: 0.9em;
+        }
+
+        .editor-container {
+            margin-top: 12px;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .editor-header h2 {
+            color: #333;
+            font-size: 1.4em;
+        }
+
+        .editor-header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .json-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            background: #f9f9f9;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .field-group.nested {
+            margin-left: 24px;
+            background: #f5f5f5;
+            border-left-color: #764ba2;
+        }
+
+        .field-group.array-item {
+            border-left-color: #48bb78;
+        }
+
+        .field-group.object-group,
+        .field-group.array-group {
+            align-items: flex-start;
+        }
+
+        .field-group.object-group .field-label,
+        .field-group.array-group .field-label {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* Comprimi/espandi per ramificazioni */
+        .field-label-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            flex-shrink: 0;
+            min-width: 120px;
+            user-select: none;
+        }
+
+        .field-label-row:hover {
+            opacity: 0.85;
+        }
+
+        .collapse-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            font-size: 0.75em;
+            color: #667eea;
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .field-group.collapsed .collapse-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .field-group.object-group.collapsed .field-group-content,
+        .field-group.array-group.collapsed .field-group-content,
+        .field-group.array-item.collapsed .field-group-content {
+            display: none !important;
+        }
+
+        .field-group-content {
+            flex: 1;
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0;
+            font-size: 0.9em;
+            min-width: 120px;
+            flex-shrink: 0;
+        }
+
+        .field-group .field-input {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .field-label .field-type {
+            font-size: 0.75em;
+            color: #999;
+            font-weight: normal;
+            margin-left: 6px;
+        }
+
+        .field-input {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.85em;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        .field-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .field-input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .array-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .array-controls button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .array-controls button:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-add {
+            background: #48bb78;
+            color: white;
+            min-width: 32px;
+            min-height: 32px;
+            padding: 6px 10px;
+            font-size: 1.1em;
+            line-height: 1;
+        }
+
+        .btn-remove {
+            background: #f56565;
+            color: white;
+            min-width: 32px;
+            min-height: 32px;
+            padding: 6px 10px;
+            font-size: 1.1em;
+            line-height: 1;
+        }
+
+        .field-group .btn-remove-row {
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        .field-group.add-row {
+            border-left-style: dashed;
+            background: #f0f4ff;
+        }
+
+        .field-group.add-row .field-label {
+            min-width: 100px;
+        }
+
+        /* Stili per array con menu a tendina */
+        .selected-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+            min-height: 30px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 6px;
+        }
+
+        .array-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 500;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .badge-text {
+            flex: 1;
+        }
+
+        .badge-remove {
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            color: white;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1em;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            padding: 0;
+        }
+
+        .badge-remove:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .array-add-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .array-search-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .array-search {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.85em;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        .array-search:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .array-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            margin-top: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover,
+        .dropdown-item.selected {
+            background-color: #f0f0f0;
+        }
+
+        .dropdown-item:active {
+            background-color: #e0e0e0;
+        }
+
+        .preview-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .preview-container h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        #jsonPreview {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            header h1 {
+                font-size: 1.5em;
+            }
+
+            .editor-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+
+            .field-group {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+
+            .field-group .field-label {
+                min-width: 0;
+                margin-bottom: 2px;
+            }
+
+            .field-group .field-input {
+                min-width: 0;
+            }
+
+            .field-group.nested {
+                margin-left: 15px;
+            }
+
+            .field-group-content {
+                min-width: 0;
+            }
+
+            .array-add-container {
+                flex-direction: column;
+            }
+
+            .array-search {
+                width: 100%;
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Editor JSON Interattivo</h1>
+            <p>Carica un file JSON e modifica i valori attraverso l'interfaccia</p>
+        </header>
+
+        <div class="upload-section">
+            <label for="jsonFile" class="file-label">
+                <span class="file-icon">📁</span>
+                <span>Seleziona file JSON</span>
+                <input type="file" id="jsonFile" accept=".json" />
+            </label>
+            <button id="loadExample" class="btn btn-secondary">Carica esempio</button>
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <div id="editorContainer" class="editor-container" style="display: none;">
+            <div class="editor-header">
+                <h2>Modifica i valori</h2>
+                <div class="editor-header-actions">
+                    <button type="button" id="expandAllBtn" class="btn btn-secondary">Espandi tutto</button>
+                    <button type="button" id="collapseAllBtn" class="btn btn-secondary">Comprimi tutto</button>
+                    <button id="downloadBtn" class="btn btn-primary">💾 Scarica JSON</button>
+                </div>
+            </div>
+            <form id="jsonForm" class="json-form"></form>
+        </div>
+
+        <div id="previewContainer" class="preview-container" style="display: none;">
+            <h3>Anteprima JSON</h3>
+            <pre id="jsonPreview"></pre>
+        </div>
+    </div>
+
+    <script>
+        let currentJsonData = null;
+
+        // Esempio JSON per test
+        const exampleJson = {
+            "nome": "Mario",
+            "cognome": "Rossi",
+            "età": 30,
+            "attivo": true,
+            "indirizzo": {
+                "via": "Via Roma 1",
+                "città": "Milano",
+                "cap": "20100"
+            },
+            "hobby": ["lettura", "sport", "musica"],
+            "contatti": {
+                "email": "mario.rossi@example.com",
+                "telefono": "+39 123 456 7890"
+            }
+        };
+
+        // Carica esempio
+        document.getElementById('loadExample').addEventListener('click', () => {
+            currentJsonData = JSON.parse(JSON.stringify(exampleJson));
+            renderForm(currentJsonData);
+            updatePreview();
+        });
+
+        // Carica file JSON
+        document.getElementById('jsonFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    currentJsonData = JSON.parse(event.target.result);
+                    renderForm(currentJsonData);
+                    updatePreview();
+                    hideError();
+                } catch (error) {
+                    showError('Errore nel parsing del JSON: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Download JSON
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (!currentJsonData) return;
+
+            const updatedData = collectFormData();
+            const jsonString = JSON.stringify(updatedData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'output.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Comprimi/Espandi tutto
+        document.getElementById('collapseAllBtn').addEventListener('click', () => {
+            document.querySelectorAll('#editorContainer .field-group.object-group, #editorContainer .field-group.array-group, #editorContainer .field-group.array-item').forEach(el => el.classList.add('collapsed'));
+        });
+        document.getElementById('expandAllBtn').addEventListener('click', () => {
+            document.querySelectorAll('#editorContainer .field-group.collapsed').forEach(el => el.classList.remove('collapsed'));
+        });
+
+        // Renderizza il form basato sul JSON
+        function renderForm(data, parentKey = '', depth = 0) {
+            const form = document.getElementById('jsonForm');
+            form.innerHTML = '';
+            
+            Object.keys(data).forEach(key => {
+                const value = data[key];
+                const fullKey = parentKey ? `${parentKey}.${key}` : key;
+                
+                if (Array.isArray(value)) {
+                    renderArrayField(form, key, value, fullKey, depth);
+                } else if (typeof value === 'object' && value !== null) {
+                    renderObjectField(form, key, value, fullKey, depth);
+                } else {
+                    renderPrimitiveField(form, key, value, fullKey, depth);
+                }
+            });
+            
+            // Riga "Aggiungi" solo a livello root
+            if (depth === 0 && !parentKey) {
+                const addRow = document.createElement('div');
+                addRow.className = 'field-group add-row';
+                const addLabel = document.createElement('div');
+                addLabel.className = 'field-label';
+                addLabel.textContent = 'Nuovo campo';
+                const keyInput = document.createElement('input');
+                keyInput.type = 'text';
+                keyInput.className = 'field-input';
+                keyInput.placeholder = 'Nome chiave...';
+                keyInput.style.flex = '1';
+                const addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'btn-add';
+                addBtn.textContent = '+';
+                addBtn.title = 'Aggiungi campo';
+                addBtn.addEventListener('click', () => {
+                    let key = keyInput.value.trim() || 'nuovoCampo';
+                    let base = key;
+                    let i = 0;
+                    while (currentJsonData && currentJsonData.hasOwnProperty(key)) {
+                        key = base + '_' + (++i);
+                    }
+                    if (!currentJsonData) currentJsonData = {};
+                    const keys = Object.keys(currentJsonData);
+                    const template = keys.length > 0 ? currentJsonData[keys[0]] : '';
+                    currentJsonData[key] = cloneStructure(template);
+                    keyInput.value = '';
+                    renderForm(currentJsonData);
+                    updatePreview();
+                });
+                addRow.appendChild(addLabel);
+                addRow.appendChild(keyInput);
+                addRow.appendChild(addBtn);
+                form.appendChild(addRow);
+            }
+            
+            document.getElementById('editorContainer').style.display = 'block';
+            document.getElementById('previewContainer').style.display = 'block';
+        }
+
+        // Renderizza campo primitivo (string, number, boolean)
+        function renderPrimitiveField(form, key, value, fullKey, depth) {
+            const fieldGroup = document.createElement('div');
+            fieldGroup.className = 'field-group';
+            fieldGroup.setAttribute('data-key', fullKey);
+            if (depth > 0) fieldGroup.classList.add('nested');
+            
+            const label = document.createElement('label');
+            label.className = 'field-label';
+            label.innerHTML = `${key} <span class="field-type">(${typeof value})</span>`;
+            
+            const input = document.createElement('input');
+            input.className = 'field-input';
+            input.setAttribute('data-key', fullKey);
+            
+            if (typeof value === 'boolean') {
+                const checkboxLabel = document.createElement('label');
+                checkboxLabel.className = 'checkbox-label';
+                input.type = 'checkbox';
+                input.checked = value;
+                checkboxLabel.appendChild(input);
+                checkboxLabel.appendChild(document.createTextNode(' ' + key));
+                fieldGroup.appendChild(checkboxLabel);
+            } else if (typeof value === 'number') {
+                input.type = 'number';
+                input.value = value;
+                fieldGroup.appendChild(label);
+                fieldGroup.appendChild(input);
+            } else {
+                input.type = 'text';
+                input.value = value;
+                fieldGroup.appendChild(label);
+                fieldGroup.appendChild(input);
+            }
+            
+            if (depth === 0) fieldGroup.appendChild(makeRemoveButton(fullKey));
+            form.appendChild(fieldGroup);
+        }
+
+        // Renderizza campo oggetto
+        function renderObjectField(form, key, value, fullKey, depth) {
+            const fieldGroup = document.createElement('div');
+            fieldGroup.className = 'field-group object-group';
+            if (depth > 0) fieldGroup.classList.add('nested');
+            
+            const labelRow = document.createElement('div');
+            labelRow.className = 'field-label-row';
+            const collapseToggle = document.createElement('span');
+            collapseToggle.className = 'collapse-toggle';
+            collapseToggle.setAttribute('aria-hidden', 'true');
+            collapseToggle.textContent = '▼';
+            const label = document.createElement('div');
+            label.className = 'field-label';
+            label.textContent = `${key} (oggetto)`;
+            labelRow.appendChild(collapseToggle);
+            labelRow.appendChild(label);
+            labelRow.addEventListener('click', (e) => { e.preventDefault(); fieldGroup.classList.toggle('collapsed'); });
+            fieldGroup.appendChild(labelRow);
+            
+            const nestedContainer = document.createElement('div');
+            nestedContainer.className = 'field-group-content';
+            nestedContainer.setAttribute('data-key', fullKey);
+            
+            Object.keys(value).forEach(nestedKey => {
+                const nestedValue = value[nestedKey];
+                const nestedFullKey = `${fullKey}.${nestedKey}`;
+                
+                if (Array.isArray(nestedValue)) {
+                    renderArrayField(nestedContainer, nestedKey, nestedValue, nestedFullKey, depth + 1);
+                } else if (typeof nestedValue === 'object' && nestedValue !== null) {
+                    renderObjectField(nestedContainer, nestedKey, nestedValue, nestedFullKey, depth + 1);
+                } else {
+                    renderPrimitiveField(nestedContainer, nestedKey, nestedValue, nestedFullKey, depth + 1);
+                }
+            });
+            
+            fieldGroup.appendChild(nestedContainer);
+            if (depth === 0) fieldGroup.appendChild(makeRemoveButton(fullKey));
+            form.appendChild(fieldGroup);
+        }
+
+        // Renderizza campo array
+        function renderArrayField(form, key, value, fullKey, depth) {
+            const fieldGroup = document.createElement('div');
+            fieldGroup.className = 'field-group array-group';
+            if (depth > 0) fieldGroup.classList.add('nested');
+            
+            const labelRow = document.createElement('div');
+            labelRow.className = 'field-label-row';
+            const collapseToggle = document.createElement('span');
+            collapseToggle.className = 'collapse-toggle';
+            collapseToggle.setAttribute('aria-hidden', 'true');
+            collapseToggle.textContent = '▼';
+            const label = document.createElement('div');
+            label.className = 'field-label';
+            label.textContent = `${key} (array)`;
+            labelRow.appendChild(collapseToggle);
+            labelRow.appendChild(label);
+            labelRow.addEventListener('click', (e) => { e.preventDefault(); fieldGroup.classList.toggle('collapsed'); });
+            fieldGroup.appendChild(labelRow);
+            
+            const arrayContainer = document.createElement('div');
+            arrayContainer.className = 'field-group-content';
+            arrayContainer.setAttribute('data-key', fullKey);
+            arrayContainer.setAttribute('data-array', 'true');
+            
+            // Controlla se è un array di oggetti
+            const isObjectArray = value.length > 0 && typeof value[0] === 'object' && value[0] !== null && !Array.isArray(value[0]);
+            
+            if (isObjectArray) {
+                // Array di oggetti - mantieni la visualizzazione originale
+                value.forEach((item, index) => {
+                    const itemGroup = document.createElement('div');
+                    itemGroup.className = 'field-group array-item';
+                    itemGroup.setAttribute('data-index', index);
+                    
+                    const itemLabelRow = document.createElement('div');
+                    itemLabelRow.className = 'field-label-row';
+                    const itemCollapseToggle = document.createElement('span');
+                    itemCollapseToggle.className = 'collapse-toggle';
+                    itemCollapseToggle.setAttribute('aria-hidden', 'true');
+                    itemCollapseToggle.textContent = '▼';
+                    const itemLabel = document.createElement('div');
+                    itemLabel.className = 'field-label';
+                    itemLabel.textContent = `Elemento ${index + 1}`;
+                    itemLabelRow.appendChild(itemCollapseToggle);
+                    itemLabelRow.appendChild(itemLabel);
+                    itemLabelRow.addEventListener('click', (e) => { e.preventDefault(); itemGroup.classList.toggle('collapsed'); });
+                    itemGroup.appendChild(itemLabelRow);
+                    
+                    const nestedContainer = document.createElement('div');
+                    nestedContainer.className = 'field-group-content';
+                    Object.keys(item).forEach(itemKey => {
+                        const itemValue = item[itemKey];
+                        const itemFullKey = `${fullKey}[${index}].${itemKey}`;
+                        
+                        if (Array.isArray(itemValue)) {
+                            renderArrayField(nestedContainer, itemKey, itemValue, itemFullKey, depth + 1);
+                        } else if (typeof itemValue === 'object' && itemValue !== null) {
+                            renderObjectField(nestedContainer, itemKey, itemValue, itemFullKey, depth + 1);
+                        } else {
+                            renderPrimitiveField(nestedContainer, itemKey, itemValue, itemFullKey, depth + 1);
+                        }
+                    });
+                    itemGroup.appendChild(nestedContainer);
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'btn-remove';
+                    removeBtn.textContent = '−';
+                    removeBtn.title = 'Rimuovi elemento';
+                    removeBtn.onclick = () => {
+                        itemGroup.remove();
+                        updatePreview();
+                    };
+                    itemGroup.appendChild(removeBtn);
+                    
+                    arrayContainer.appendChild(itemGroup);
+                });
+                
+                const addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'btn-add';
+                addBtn.textContent = '+';
+                addBtn.title = 'Aggiungi elemento';
+                addBtn.onclick = () => {
+                    const newIndex = arrayContainer.querySelectorAll('.array-item').length;
+                    const itemGroup = document.createElement('div');
+                    itemGroup.className = 'field-group array-item';
+                    itemGroup.setAttribute('data-index', newIndex);
+                    
+                    const itemLabelRow = document.createElement('div');
+                    itemLabelRow.className = 'field-label-row';
+                    const itemCollapseToggle = document.createElement('span');
+                    itemCollapseToggle.className = 'collapse-toggle';
+                    itemCollapseToggle.setAttribute('aria-hidden', 'true');
+                    itemCollapseToggle.textContent = '▼';
+                    const itemLabel = document.createElement('div');
+                    itemLabel.className = 'field-label';
+                    itemLabel.textContent = `Elemento ${newIndex + 1}`;
+                    itemLabelRow.appendChild(itemCollapseToggle);
+                    itemLabelRow.appendChild(itemLabel);
+                    itemLabelRow.addEventListener('click', (e) => { e.preventDefault(); itemGroup.classList.toggle('collapsed'); });
+                    itemGroup.appendChild(itemLabelRow);
+                    
+                    const nestedContainer = document.createElement('div');
+                    nestedContainer.className = 'field-group-content';
+                    if (value.length > 0) {
+                        Object.keys(value[0]).forEach(itemKey => {
+                            const itemFullKey = `${fullKey}[${newIndex}].${itemKey}`;
+                            renderPrimitiveField(nestedContainer, itemKey, '', itemFullKey, depth + 1);
+                        });
+                    }
+                    itemGroup.appendChild(nestedContainer);
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'btn-remove';
+                    removeBtn.textContent = '−';
+                    removeBtn.title = 'Rimuovi elemento';
+                    removeBtn.onclick = () => {
+                        itemGroup.remove();
+                        updatePreview();
+                    };
+                    itemGroup.appendChild(removeBtn);
+                    
+                    arrayContainer.insertBefore(itemGroup, addBtn);
+                    updatePreview();
+                };
+                
+                arrayContainer.appendChild(addBtn);
+            } else {
+                // Array di valori primitivi - usa menu a tendina
+                const selectedItemsContainer = document.createElement('div');
+                selectedItemsContainer.className = 'selected-items';
+                
+                // NON mostrare elementi esistenti come badge - l'array parte vuoto
+                // I valori nel JSON sono solo suggerimenti nel menu a tendina
+                
+                // Container per ricerca e dropdown
+                const addContainer = document.createElement('div');
+                addContainer.className = 'array-add-container';
+                
+                // Wrapper per campo di ricerca e dropdown
+                const searchWrapper = document.createElement('div');
+                searchWrapper.className = 'array-search-wrapper';
+                
+                // Campo di ricerca
+                const searchInput = document.createElement('input');
+                searchInput.type = 'text';
+                searchInput.className = 'field-input array-search';
+                searchInput.placeholder = '🔍 Cerca o inserisci valore...';
+                
+                // Dropdown personalizzato
+                const dropdown = document.createElement('div');
+                dropdown.className = 'array-dropdown';
+                dropdown.style.display = 'none';
+                
+                // Lista dei valori disponibili
+                const availableValues = value.length > 0 ? [...new Set(value)] : [];
+                
+                // Funzione per mostrare/nascondere il dropdown
+                const showDropdown = (filterText = '') => {
+                    dropdown.innerHTML = '';
+                    
+                    if (availableValues.length === 0) {
+                        dropdown.style.display = 'none';
+                        return;
+                    }
+                    
+                    const filteredValues = availableValues.filter(val => {
+                        if (!filterText) return true;
+                        const searchText = filterText.toLowerCase();
+                        return String(val).toLowerCase().includes(searchText);
+                    });
+                    
+                    if (filteredValues.length === 0 && filterText) {
+                        // Nessun risultato trovato, mostra opzione per aggiungere il valore cercato
+                        const noResultItem = document.createElement('div');
+                        noResultItem.className = 'dropdown-item';
+                        noResultItem.innerHTML = `➕ Aggiungi "${filterText}"`;
+                        noResultItem.onclick = () => {
+                            addValue(filterText);
+                        };
+                        dropdown.appendChild(noResultItem);
+                        dropdown.style.display = 'block';
+                    } else if (filteredValues.length > 0) {
+                        // Mostra risultati filtrati
+                        filteredValues.forEach(val => {
+                            const item = document.createElement('div');
+                            item.className = 'dropdown-item';
+                            item.textContent = val;
+                            item.onclick = () => {
+                                addValue(val);
+                            };
+                            dropdown.appendChild(item);
+                        });
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.style.display = 'none';
+                    }
+                };
+                
+                // Funzione per aggiungere un valore
+                const addValue = (val) => {
+                    let newValue;
+                    if (typeof val === 'number' || (typeof val === 'string' && !isNaN(val) && val.trim() !== '')) {
+                        const numValue = parseFloat(val);
+                        newValue = !isNaN(numValue) ? numValue : val;
+                    } else {
+                        newValue = String(val).trim();
+                    }
+                    
+                    if (newValue === '') return;
+                    
+                    const newIndex = selectedItemsContainer.querySelectorAll('.array-badge').length;
+                    const badge = createArrayBadge(newValue, newIndex, fullKey, selectedItemsContainer);
+                    selectedItemsContainer.appendChild(badge);
+                    
+                    searchInput.value = '';
+                    dropdown.style.display = 'none';
+                    updatePreview();
+                };
+                
+                // Gestisci input nel campo di ricerca
+                searchInput.addEventListener('input', (e) => {
+                    const filterText = e.target.value;
+                    if (filterText) {
+                        showDropdown(filterText);
+                    } else {
+                        dropdown.style.display = 'none';
+                    }
+                });
+                
+                // Gestisci focus
+                searchInput.addEventListener('focus', () => {
+                    if (searchInput.value) {
+                        showDropdown(searchInput.value);
+                    } else if (availableValues.length > 0) {
+                        showDropdown('');
+                    }
+                });
+                
+                // Nascondi dropdown quando si clicca fuori
+                document.addEventListener('click', (e) => {
+                    if (!searchWrapper.contains(e.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                });
+                
+                // Gestisci Enter nel campo di ricerca
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const filterText = searchInput.value.trim();
+                        if (filterText) {
+                            addValue(filterText);
+                        }
+                    } else if (e.key === 'Escape') {
+                        dropdown.style.display = 'none';
+                        searchInput.blur();
+                    }
+                });
+                
+                // Gestisci navigazione con frecce
+                let selectedIndex = -1;
+                searchInput.addEventListener('keydown', (e) => {
+                    const items = dropdown.querySelectorAll('.dropdown-item');
+                    if (items.length === 0) return;
+                    
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                        items.forEach((item, i) => {
+                            item.classList.toggle('selected', i === selectedIndex);
+                        });
+                        items[selectedIndex].scrollIntoView({ block: 'nearest' });
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        selectedIndex = Math.max(selectedIndex - 1, -1);
+                        items.forEach((item, i) => {
+                            item.classList.toggle('selected', i === selectedIndex);
+                        });
+                        if (selectedIndex >= 0) {
+                            items[selectedIndex].scrollIntoView({ block: 'nearest' });
+                        }
+                    } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                        e.preventDefault();
+                        items[selectedIndex].click();
+                    }
+                });
+                
+                searchWrapper.appendChild(searchInput);
+                searchWrapper.appendChild(dropdown);
+                addContainer.appendChild(searchWrapper);
+                
+                arrayContainer.appendChild(selectedItemsContainer);
+                arrayContainer.appendChild(addContainer);
+            }
+            
+            fieldGroup.appendChild(arrayContainer);
+            if (depth === 0) fieldGroup.appendChild(makeRemoveButton(fullKey));
+            form.appendChild(fieldGroup);
+        }
+
+        // Crea un badge per un elemento dell'array
+        function createArrayBadge(value, index, fullKey, container) {
+            const badge = document.createElement('div');
+            badge.className = 'array-badge';
+            badge.setAttribute('data-index', index);
+            badge.setAttribute('data-key', `${fullKey}[${index}]`);
+            
+            const badgeText = document.createElement('span');
+            badgeText.className = 'badge-text';
+            badgeText.textContent = value;
+            badge.appendChild(badgeText);
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'badge-remove';
+            removeBtn.innerHTML = '×';
+            removeBtn.onclick = () => {
+                badge.remove();
+                // Raggiorna gli indici
+                container.querySelectorAll('.array-badge').forEach((b, i) => {
+                    b.setAttribute('data-index', i);
+                    b.setAttribute('data-key', `${fullKey}[${i}]`);
+                });
+                updatePreview();
+            };
+            badge.appendChild(removeBtn);
+            
+            return badge;
+        }
+
+        // Raccoglie i dati dal form
+        function collectFormData() {
+            const form = document.getElementById('jsonForm');
+            const data = {};
+            
+            const inputs = form.querySelectorAll('[data-key]');
+            inputs.forEach(input => {
+                const key = input.getAttribute('data-key');
+                let value;
+                
+                if (input.type === 'checkbox') {
+                    value = input.checked;
+                } else if (input.type === 'number') {
+                    value = parseFloat(input.value) || 0;
+                } else {
+                    value = input.value;
+                }
+                
+                setNestedValue(data, key, value);
+            });
+            
+            // Gestisci array
+            const arrayContainers = form.querySelectorAll('[data-array="true"]');
+            arrayContainers.forEach(container => {
+                const key = container.getAttribute('data-key');
+                const items = [];
+                
+                // Controlla se usa badge (array primitivi) o item (array oggetti)
+                const badges = container.querySelectorAll('.array-badge');
+                if (badges.length > 0) {
+                    // Array di valori primitivi con badge
+                    badges.forEach(badge => {
+                        const badgeText = badge.querySelector('.badge-text');
+                        let value = badgeText.textContent;
+                        // Prova a convertire in numero se possibile
+                        if (!isNaN(value) && value.trim() !== '') {
+                            const numValue = parseFloat(value);
+                            if (!isNaN(numValue)) {
+                                value = numValue;
+                            }
+                        }
+                        items.push(value);
+                    });
+                } else {
+                    // Array di oggetti
+                    container.querySelectorAll('.array-item').forEach(itemGroup => {
+                        const index = parseInt(itemGroup.getAttribute('data-index'));
+                        const itemInputs = itemGroup.querySelectorAll('[data-key]');
+                        
+                        const itemData = {};
+                        itemInputs.forEach(itemInput => {
+                            const itemKey = itemInput.getAttribute('data-key');
+                            const relativeKey = itemKey.replace(`${key}[${index}].`, '');
+                            let value;
+                            
+                            if (itemInput.type === 'checkbox') {
+                                value = itemInput.checked;
+                            } else if (itemInput.type === 'number') {
+                                value = parseFloat(itemInput.value) || 0;
+                            } else {
+                                value = itemInput.value;
+                            }
+                            
+                            setNestedValue(itemData, relativeKey, value);
+                        });
+                        items.push(itemData);
+                    });
+                }
+                
+                setNestedValue(data, key, items);
+            });
+            
+            return data;
+        }
+
+        // Imposta valore annidato usando notazione punto
+        function setNestedValue(obj, path, value) {
+            const keys = path.split('.');
+            let current = obj;
+            
+            for (let i = 0; i < keys.length - 1; i++) {
+                let key = keys[i];
+                
+                // Gestisci array notation [index]
+                const arrayMatch = key.match(/^(.+)\[(\d+)\]$/);
+                if (arrayMatch) {
+                    key = arrayMatch[1];
+                    const index = parseInt(arrayMatch[2]);
+                    if (!current[key]) current[key] = [];
+                    if (!current[key][index]) current[key][index] = {};
+                    current = current[key][index];
+                } else {
+                    if (!current[key] || typeof current[key] !== 'object') {
+                        current[key] = {};
+                    }
+                    current = current[key];
+                }
+            }
+            
+            const lastKey = keys[keys.length - 1];
+            const arrayMatch = lastKey.match(/^(.+)\[(\d+)\]$/);
+            if (arrayMatch) {
+                const key = arrayMatch[1];
+                const index = parseInt(arrayMatch[2]);
+                if (!current[key]) current[key] = [];
+                current[key][index] = value;
+            } else {
+                current[lastKey] = value;
+            }
+        }
+
+        // Clona la struttura di un valore (stessi tipi/chiavi, valori vuoti o default)
+        function cloneStructure(value) {
+            if (value === null) return null;
+            if (Array.isArray(value)) {
+                if (value.length === 0) return [];
+                const first = value[0];
+                if (typeof first === 'object' && first !== null && !Array.isArray(first)) {
+                    return [cloneStructure(first)];
+                }
+                return [];
+            }
+            if (typeof value === 'object') {
+                const o = {};
+                for (const k of Object.keys(value)) o[k] = cloneStructure(value[k]);
+                return o;
+            }
+            if (typeof value === 'number') return 0;
+            if (typeof value === 'boolean') return false;
+            return '';
+        }
+
+        // Rimuove un percorso dall'oggetto (per pulsante Rimuovi)
+        function deleteByPath(obj, path) {
+            const segments = path.split('.');
+            if (segments.length === 0) return;
+            const last = segments.pop();
+            let parent = obj;
+            for (const seg of segments) {
+                const m = seg.match(/^(.+)\[(\d+)\]$/);
+                if (m) {
+                    const k = m[1], i = parseInt(m[2], 10);
+                    parent = parent[k] && parent[k][i];
+                } else {
+                    parent = parent[seg];
+                }
+                if (parent === undefined) return;
+            }
+            const m = last.match(/^(.+)\[(\d+)\]$/);
+            if (m) {
+                const k = m[1], i = parseInt(m[2], 10);
+                if (Array.isArray(parent[k])) parent[k].splice(i, 1);
+            } else {
+                delete parent[last];
+            }
+        }
+
+        // Crea pulsante Rimuovi per una riga (aggiorna dati e re-render)
+        function makeRemoveButton(fullKey) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-remove btn-remove-row';
+            btn.textContent = '−';
+            btn.title = 'Rimuovi questo campo';
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const data = collectFormData();
+                deleteByPath(data, fullKey);
+                currentJsonData = data;
+                renderForm(currentJsonData);
+                updatePreview();
+            });
+            return btn;
+        }
+
+        // Aggiorna anteprima JSON
+        function updatePreview() {
+            const updatedData = collectFormData();
+            document.getElementById('jsonPreview').textContent = JSON.stringify(updatedData, null, 2);
+        }
+
+        // Mostra errore
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Nascondi errore
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Aggiorna preview quando cambiano i valori
+        document.addEventListener('input', (e) => {
+            if (e.target.classList.contains('field-input')) {
+                updatePreview();
+            }
+        });
+
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('field-input')) {
+                updatePreview();
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+

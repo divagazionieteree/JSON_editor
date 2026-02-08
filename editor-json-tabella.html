@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor JSON - Vista tabellare (PC)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 24px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            font-size: 1.6em;
+            color: #1e3a5f;
+            margin-bottom: 6px;
+        }
+
+        header p {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .upload-section {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .file-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .file-label input[type="file"] { display: none; }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            background: #e8eef3;
+            color: #1e3a5f;
+        }
+
+        .btn:hover { background: #d0dce8; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+        }
+
+        .btn-primary:hover { filter: brightness(1.1); }
+
+        #errorMessage {
+            display: none;
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 0.9em;
+        }
+
+        .editor-container { display: none; margin-top: 20px; }
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e0e6eb;
+        }
+        .editor-header h2 { font-size: 1.3em; color: #1e3a5f; }
+
+        /* Tabella */
+        .table-section {
+            margin-bottom: 28px;
+        }
+
+        .table-section-title {
+            font-size: 1.05em;
+            font-weight: 600;
+            color: #1e3a5f;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+        }
+
+        .json-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .json-table th,
+        .json-table td {
+            border: 1px solid #e0e6eb;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            min-height: 2.8em;
+        }
+
+        .json-table th {
+            background: #1e3a5f;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .json-table tr:nth-child(even) { background: #f8fafc; }
+        .json-table tr:hover { background: #eef4fa; }
+
+        .json-table input[type="text"],
+        .json-table input[type="number"],
+        .json-table textarea {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: inherit;
+        }
+
+        .json-table textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+
+        .json-table textarea.cell-textarea {
+            width: 100%;
+            min-height: 2.8em;
+            resize: vertical;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            box-sizing: border-box;
+        }
+
+        .json-table input:focus,
+        .json-table textarea:focus {
+            outline: none;
+            border-color: #2d5a87;
+        }
+
+        .nested-table-wrap {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        .nested-table-wrap .json-table {
+            min-width: 200px;
+        }
+
+        .cell-primitive { min-width: 120px; }
+        .cell-complex { min-width: 200px; }
+
+        /* Array in cell: elenco per punti */
+        .cell-array-list {
+            list-style: disc;
+            padding-left: 20px;
+            margin: 6px 0 0 0;
+        }
+
+        .cell-array-list .array-item {
+            margin-bottom: 10px;
+        }
+
+        .cell-array-list .array-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Tabella annidata dentro un punto dell'elenco */
+        .cell-array-list .nested-table-wrap {
+            margin-top: 6px;
+            margin-left: 4px;
+        }
+
+        .cell-array-list .json-table {
+            font-size: 0.8em;
+        }
+
+        .cell-array-list .json-table th,
+        .cell-array-list .json-table td {
+            padding: 6px 8px;
+        }
+
+        .btn-array {
+            padding: 4px 10px;
+            font-size: 0.8em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-array-add {
+            background: #2d7d4a;
+            color: white;
+            margin-top: 6px;
+        }
+        .btn-array-add:hover { background: #246b3d; }
+        .btn-array-remove {
+            background: #c53030;
+            color: white;
+        }
+        .btn-array-remove:hover { background: #9b2c2c; }
+        .array-item-actions { display: inline-flex; gap: 6px; margin-left: 8px; vertical-align: middle; }
+
+        .btn-expand-row {
+            padding: 2px 8px;
+            font-size: 0.9em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #e8eef3;
+            color: #1e3a5f;
+            font-weight: bold;
+        }
+        .btn-expand-row:hover { background: #d0dce8; }
+        tr.row-collapsed .cell-content-heavy { display: none !important; }
+        tr.row-collapsed td .cell-placeholder { display: inline !important; }
+        td .cell-placeholder { display: none; color: #999; font-size: 0.9em; }
+        tr.row-collapsed td.cell-preview-mode textarea,
+        tr.row-collapsed td.cell-preview-mode input[type="text"],
+        tr.row-collapsed td.cell-preview-mode input[type="number"] {
+            max-height: 2.8em;
+            overflow: hidden;
+            min-height: 2.8em;
+        }
+        tr.row-collapsed td .cell-placeholder {
+            display: inline-block !important;
+            min-height: 2em;
+            vertical-align: middle;
+        }
+
+        .preview-container {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        .preview-container h3 { font-size: 1.1em; margin-bottom: 10px; color: #1e3a5f; }
+        #jsonPreview {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.8em;
+            line-height: 1.5;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Editor JSON – Vista tabellare (PC)</h1>
+            <p>Carica un file JSON: gli oggetti vengono mostrati in orizzontale come tabella</p>
+        </header>
+
+        <div class="upload-section">
+            <label for="jsonFile" class="file-label">
+                <span>📁</span>
+                <span>Seleziona file JSON</span>
+                <input type="file" id="jsonFile" accept=".json" />
+            </label>
+            <button id="loadExample" class="btn">Carica esempio</button>
+        </div>
+
+        <div id="errorMessage"></div>
+
+        <div id="editorContainer" class="editor-container">
+            <div class="editor-header">
+                <h2>Modifica (layout a tabella)</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="toggleExpandBtn" class="btn" type="button" title="Comprimi/Espandi tutte le righe">− Comprimi tutto</button>
+                    <button id="downloadBtn" class="btn btn-primary">Scarica JSON</button>
+                </div>
+            </div>
+            <div id="tablesContainer"></div>
+        </div>
+
+        <div id="previewContainer" class="preview-container" style="display: none;">
+            <h3>Anteprima JSON</h3>
+            <pre id="jsonPreview"></pre>
+        </div>
+    </div>
+
+    <script>
+        let currentJsonData = null;
+
+        const exampleJson = {
+            "data": "2024-05-07",
+            "informazioni_base": {
+                "nome_vino": "",
+                "produttore": "",
+                "tipologia": "vino fermo",
+                "Denominazione": "",
+                "anno": ""
+            },
+            "scheda_valutazione_punti": {
+                "esame_visivo_10": { "aspetto": "9" },
+                "punteggio_totale": "90"
+            }
+        };
+
+        document.getElementById('loadExample').addEventListener('click', () => {
+            currentJsonData = JSON.parse(JSON.stringify(exampleJson));
+            renderTables(currentJsonData);
+            updatePreview();
+        });
+
+        document.getElementById('jsonFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    currentJsonData = JSON.parse(event.target.result);
+                    renderTables(currentJsonData);
+                    updatePreview();
+                    document.getElementById('errorMessage').style.display = 'none';
+                } catch (err) {
+                    document.getElementById('errorMessage').textContent = 'Errore nel parsing del JSON: ' + err.message;
+                    document.getElementById('errorMessage').style.display = 'block';
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (!currentJsonData) return;
+            const data = collectDataFromTables();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'output.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+
+        function renderTables(data) {
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = '';
+            container.setAttribute('data-root', 'root');
+
+            if (Array.isArray(data)) {
+                const section = document.createElement('div');
+                section.className = 'table-section';
+                const title = document.createElement('div');
+                title.className = 'table-section-title';
+                title.textContent = 'Dati (array)';
+                section.appendChild(title);
+                renderArrayOfObjectsTable(section, data, 'root', 'Dati');
+                container.appendChild(section);
+            } else if (data !== null && typeof data === 'object') {
+                Object.keys(data).forEach(key => {
+                    const section = document.createElement('div');
+                    section.className = 'table-section';
+                    section.setAttribute('data-key', key);
+
+                    const title = document.createElement('div');
+                    title.className = 'table-section-title';
+                    title.textContent = key;
+                    section.appendChild(title);
+
+                    const value = data[key];
+                    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && !Array.isArray(value[0])) {
+                        renderArrayOfObjectsTable(section, value, key, key);
+                    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                        renderObjectTable(section, value, key);
+                    } else {
+                        renderPrimitiveRow(section, key, value);
+                    }
+                    container.appendChild(section);
+                });
+            }
+
+            document.getElementById('editorContainer').style.display = 'block';
+            document.getElementById('previewContainer').style.display = 'block';
+        }
+
+        function renderObjectTable(parent, obj, pathPrefix) {
+            const keys = Object.keys(obj);
+            if (keys.length === 0) return;
+
+            const table = document.createElement('table');
+            table.className = 'json-table';
+            const thead = document.createElement('thead');
+            const trHead = document.createElement('tr');
+            keys.forEach(k => {
+                const th = document.createElement('th');
+                th.textContent = k;
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            const tr = document.createElement('tr');
+            keys.forEach(k => {
+                const td = document.createElement('td');
+                td.setAttribute('data-key', pathPrefix + '.' + k);
+                const val = obj[k];
+                appendCellContent(td, val, pathPrefix + '.' + k);
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+            table.appendChild(tbody);
+
+            const wrap = document.createElement('div');
+            wrap.className = 'nested-table-wrap';
+            wrap.appendChild(table);
+            parent.appendChild(wrap);
+        }
+
+        function renderArrayOfObjectsTable(parent, arr, pathPrefix, title) {
+            const allKeys = new Set();
+            arr.forEach(item => {
+                if (typeof item === 'object' && item !== null) Object.keys(item).forEach(k => allKeys.add(k));
+            });
+            const keys = Array.from(allKeys);
+            if (keys.length === 0) return;
+
+            const table = document.createElement('table');
+            table.className = 'json-table';
+            table.setAttribute('data-array', pathPrefix);
+
+            const thead = document.createElement('thead');
+            const trHead = document.createElement('tr');
+            const thExpand = document.createElement('th');
+            thExpand.style.width = '36px';
+            trHead.appendChild(thExpand);
+            keys.forEach(k => {
+                const th = document.createElement('th');
+                th.textContent = k;
+                trHead.appendChild(th);
+            });
+            const thActions = document.createElement('th');
+            thActions.style.width = '80px';
+            trHead.appendChild(thActions);
+            thead.appendChild(trHead);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            arr.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'data-row';
+                tr.setAttribute('data-index', index);
+                const tdExpand = document.createElement('td');
+                const btnExpand = document.createElement('button');
+                btnExpand.type = 'button';
+                btnExpand.className = 'btn-expand-row';
+                btnExpand.textContent = '−';
+                btnExpand.title = 'Comprimi riga';
+                btnExpand.onclick = () => toggleRowExpanded(tr, btnExpand);
+                tdExpand.appendChild(btnExpand);
+                tr.appendChild(tdExpand);
+                keys.forEach(k => {
+                    const td = document.createElement('td');
+                    td.setAttribute('data-key', pathPrefix + '[' + index + '].' + k);
+                    const val = item[k];
+                    appendCellContent(td, val, pathPrefix + '[' + index + '].' + k);
+                    tr.appendChild(td);
+                });
+                const tdBtn = document.createElement('td');
+                const btnRemove = document.createElement('button');
+                btnRemove.type = 'button';
+                btnRemove.className = 'btn-array btn-array-remove';
+                btnRemove.textContent = '−';
+                btnRemove.onclick = () => { tr.remove(); updatePreview(); };
+                tdBtn.appendChild(btnRemove);
+                tr.appendChild(tdBtn);
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            const wrap = document.createElement('div');
+            wrap.className = 'nested-table-wrap';
+            wrap.appendChild(table);
+            const btnAdd = document.createElement('button');
+            btnAdd.type = 'button';
+            btnAdd.className = 'btn-array btn-array-add';
+            btnAdd.textContent = '+';
+            btnAdd.onclick = () => {
+                const newIndex = tbody.querySelectorAll('tr').length;
+                const tr = document.createElement('tr');
+                tr.className = 'data-row';
+                tr.setAttribute('data-index', newIndex);
+                const tdExpand = document.createElement('td');
+                const btnExpand = document.createElement('button');
+                btnExpand.type = 'button';
+                btnExpand.className = 'btn-expand-row';
+                btnExpand.textContent = '−';
+                btnExpand.title = 'Comprimi riga';
+                btnExpand.onclick = () => toggleRowExpanded(tr, btnExpand);
+                tdExpand.appendChild(btnExpand);
+                tr.appendChild(tdExpand);
+                keys.forEach(k => {
+                    const td = document.createElement('td');
+                    td.setAttribute('data-key', pathPrefix + '[' + newIndex + '].' + k);
+                    let emptyVal = '';
+                    if (arr.length > 0 && arr[0][k] !== undefined && arr[0][k] !== null) {
+                        const v = arr[0][k];
+                        if (typeof v === 'number') emptyVal = 0;
+                        else if (typeof v === 'boolean') emptyVal = false;
+                        else emptyVal = '';
+                    }
+                    appendCellContent(td, emptyVal, pathPrefix + '[' + newIndex + '].' + k);
+                    tr.appendChild(td);
+                });
+                const tdBtn = document.createElement('td');
+                const btnRemove = document.createElement('button');
+                btnRemove.type = 'button';
+                btnRemove.className = 'btn-array btn-array-remove';
+                btnRemove.textContent = '−';
+                btnRemove.onclick = () => { tr.remove(); updatePreview(); };
+                tdBtn.appendChild(btnRemove);
+                tr.appendChild(tdBtn);
+                tbody.appendChild(tr);
+                updatePreview();
+            };
+            wrap.appendChild(btnAdd);
+            parent.appendChild(wrap);
+        }
+
+        function toggleRowExpanded(tr, btn) {
+            const collapsed = tr.classList.toggle('row-collapsed');
+            setRowCollapsedState(tr, collapsed);
+            btn.textContent = collapsed ? '+' : '−';
+            btn.title = collapsed ? 'Espandi riga' : 'Comprimi riga';
+        }
+
+        function setRowCollapsedState(tr, collapsed) {
+            const tds = tr.querySelectorAll('td');
+            tds.forEach((td, i) => {
+                if (i === 0 || i === tds.length - 1) return;
+                const hasHeavy = td.querySelector('.nested-table-wrap, .cell-array');
+                const hasText = td.querySelector('textarea, input[type="text"], input[type="number"]');
+                if (collapsed) {
+                    if (hasHeavy) {
+                        td.querySelectorAll('.nested-table-wrap, .cell-array').forEach(el => { el.classList.add('cell-content-heavy'); });
+                        if (!td.querySelector('.cell-placeholder')) {
+                            const ph = document.createElement('span');
+                            ph.className = 'cell-placeholder';
+                            ph.textContent = '[...]';
+                            td.appendChild(ph);
+                        }
+                    }
+                    if (hasText) td.classList.add('cell-preview-mode');
+                } else {
+                    if (hasHeavy) {
+                        td.querySelectorAll('.cell-content-heavy').forEach(el => { el.classList.remove('cell-content-heavy'); });
+                        const ph = td.querySelector('.cell-placeholder');
+                        if (ph) ph.remove();
+                    }
+                    td.classList.remove('cell-preview-mode');
+                }
+            });
+        }
+
+        function expandAllRows(expand) {
+            document.querySelectorAll('.data-row').forEach(tr => {
+                const btn = tr.querySelector('.btn-expand-row');
+                if (!btn) return;
+                if (expand) {
+                    tr.classList.remove('row-collapsed');
+                    setRowCollapsedState(tr, false);
+                    btn.textContent = '−';
+                    btn.title = 'Comprimi riga';
+                } else {
+                    tr.classList.add('row-collapsed');
+                    setRowCollapsedState(tr, true);
+                    btn.textContent = '+';
+                    btn.title = 'Espandi riga';
+                }
+            });
+        }
+
+        document.getElementById('toggleExpandBtn').addEventListener('click', () => {
+            const anyExpanded = document.querySelector('.data-row:not(.row-collapsed)');
+            expandAllRows(!anyExpanded);
+            document.getElementById('toggleExpandBtn').textContent = anyExpanded ? '+ Espandi tutto' : '− Comprimi tutto';
+        });
+
+        function renderPrimitiveRow(parent, key, value) {
+            const table = document.createElement('table');
+            table.className = 'json-table';
+            const tbody = document.createElement('tbody');
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.textContent = key;
+            tr.appendChild(th);
+            const td = document.createElement('td');
+            td.setAttribute('data-key', key);
+            appendCellContent(td, value, key);
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            table.appendChild(tbody);
+            parent.appendChild(table);
+        }
+
+        function appendCellContent(td, val, path) {
+            if (typeof val === 'string' || typeof val === 'number' || val === null || val === undefined) {
+                td.classList.add('cell-primitive');
+                if (typeof val === 'number') {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.value = val === null || val === undefined ? '' : val;
+                    input.setAttribute('data-key', path);
+                    input.addEventListener('input', updatePreview);
+                    td.appendChild(input);
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'cell-textarea';
+                    textarea.rows = 1;
+                    textarea.value = val === null || val === undefined ? '' : val;
+                    textarea.setAttribute('data-key', path);
+                    textarea.addEventListener('input', updatePreview);
+                    td.appendChild(textarea);
+                }
+            } else if (typeof val === 'boolean') {
+                td.classList.add('cell-primitive');
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = val;
+                input.setAttribute('data-key', path);
+                input.addEventListener('change', updatePreview);
+                td.appendChild(input);
+            } else if (Array.isArray(val)) {
+                td.classList.add('cell-complex', 'cell-array');
+                td.setAttribute('data-array-path', path);
+                const allObjects = val.length > 0 && val.every(it => typeof it === 'object' && it !== null && !Array.isArray(it));
+                if (allObjects) {
+                    const keys = new Set();
+                    val.forEach(it => Object.keys(it).forEach(k => keys.add(k)));
+                    const keyList = Array.from(keys);
+                    const wrap = document.createElement('div');
+                    wrap.className = 'nested-table-wrap';
+                    const table = document.createElement('table');
+                    table.className = 'json-table';
+                    table.setAttribute('data-array-merged', path);
+                    const thead = document.createElement('thead');
+                    const trHead = document.createElement('tr');
+                    const thExp = document.createElement('th');
+                    thExp.style.width = '36px';
+                    trHead.appendChild(thExp);
+                    keyList.forEach(k => {
+                        const th = document.createElement('th');
+                        th.textContent = k;
+                        trHead.appendChild(th);
+                    });
+                    const thAct = document.createElement('th');
+                    thAct.style.width = '80px';
+                    trHead.appendChild(thAct);
+                    thead.appendChild(trHead);
+                    table.appendChild(thead);
+                    const tbody = document.createElement('tbody');
+                    val.forEach((item, index) => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'data-row';
+                        tr.setAttribute('data-index', index);
+                        const tdExp = document.createElement('td');
+                        const btnExp = document.createElement('button');
+                        btnExp.type = 'button';
+                        btnExp.className = 'btn-expand-row';
+                        btnExp.textContent = '−';
+                        btnExp.title = 'Comprimi riga';
+                        btnExp.onclick = () => toggleRowExpanded(tr, btnExp);
+                        tdExp.appendChild(btnExp);
+                        tr.appendChild(tdExp);
+                        const itemPath = path + '[' + index + ']';
+                        keyList.forEach(k => {
+                            const cell = document.createElement('td');
+                            cell.setAttribute('data-key', itemPath + '.' + k);
+                            appendCellContent(cell, item[k], itemPath + '.' + k);
+                            tr.appendChild(cell);
+                        });
+                        const tdBtn = document.createElement('td');
+                        const btnR = document.createElement('button');
+                        btnR.type = 'button';
+                        btnR.className = 'btn-array btn-array-remove';
+                        btnR.textContent = '−';
+                        btnR.onclick = () => { tr.remove(); updatePreview(); };
+                        tdBtn.appendChild(btnR);
+                        tr.appendChild(tdBtn);
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    wrap.appendChild(table);
+                    const btnAdd = document.createElement('button');
+                    btnAdd.type = 'button';
+                    btnAdd.className = 'btn-array btn-array-add';
+                    btnAdd.textContent = '+';
+                    btnAdd.onclick = () => {
+                        const newIndex = tbody.querySelectorAll('tr').length;
+                        const tr = document.createElement('tr');
+                        tr.className = 'data-row';
+                        tr.setAttribute('data-index', newIndex);
+                        const tdExp = document.createElement('td');
+                        const btnExp = document.createElement('button');
+                        btnExp.type = 'button';
+                        btnExp.className = 'btn-expand-row';
+                        btnExp.textContent = '−';
+                        btnExp.title = 'Comprimi riga';
+                        btnExp.onclick = () => toggleRowExpanded(tr, btnExp);
+                        tdExp.appendChild(btnExp);
+                        tr.appendChild(tdExp);
+                        const itemPath = path + '[' + newIndex + ']';
+                        keyList.forEach(k => {
+                            const cell = document.createElement('td');
+                            cell.setAttribute('data-key', itemPath + '.' + k);
+                            let emptyVal = val.length > 0 && val[0][k] !== undefined && val[0][k] !== null
+                                ? (typeof val[0][k] === 'number' ? 0 : typeof val[0][k] === 'boolean' ? false : '')
+                                : '';
+                            appendCellContent(cell, emptyVal, itemPath + '.' + k);
+                            tr.appendChild(cell);
+                        });
+                        const tdBtn = document.createElement('td');
+                        const btnR = document.createElement('button');
+                        btnR.type = 'button';
+                        btnR.className = 'btn-array btn-array-remove';
+                        btnR.textContent = '−';
+                        btnR.onclick = () => { tr.remove(); updatePreview(); };
+                        tdBtn.appendChild(btnR);
+                        tr.appendChild(tdBtn);
+                        tbody.appendChild(tr);
+                        updatePreview();
+                    };
+                    wrap.appendChild(btnAdd);
+                    td.appendChild(wrap);
+                } else {
+                    const ul = document.createElement('ul');
+                    ul.className = 'cell-array-list';
+                    val.forEach((item, index) => {
+                        const li = document.createElement('li');
+                        li.className = 'array-item';
+                        li.setAttribute('data-index', index);
+                        const itemPath = path + '[' + index + ']';
+                        if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+                            const wrap = document.createElement('div');
+                            wrap.className = 'nested-table-wrap';
+                            const table = document.createElement('table');
+                            table.className = 'json-table';
+                            const thead = document.createElement('thead');
+                            const trHead = document.createElement('tr');
+                            Object.keys(item).forEach(k => {
+                                const th = document.createElement('th');
+                                th.textContent = k;
+                                trHead.appendChild(th);
+                            });
+                            thead.appendChild(trHead);
+                            table.appendChild(thead);
+                            const tbody = document.createElement('tbody');
+                            const tr = document.createElement('tr');
+                            Object.keys(item).forEach(k => {
+                                const cell = document.createElement('td');
+                                cell.setAttribute('data-key', itemPath + '.' + k);
+                                appendCellContent(cell, item[k], itemPath + '.' + k);
+                                tr.appendChild(cell);
+                            });
+                            tbody.appendChild(tr);
+                            table.appendChild(tbody);
+                            wrap.appendChild(table);
+                            li.appendChild(wrap);
+                            const btnRm = document.createElement('button');
+                            btnRm.type = 'button';
+                            btnRm.className = 'btn-array btn-array-remove';
+                            btnRm.textContent = '−';
+                            btnRm.onclick = () => { li.remove(); updatePreview(); };
+                            li.appendChild(btnRm);
+                        } else if (Array.isArray(item)) {
+                            const subAllObjects = item.length > 0 && item.every(it => typeof it === 'object' && it !== null && !Array.isArray(it));
+                            if (subAllObjects) {
+                                const subKeys = new Set();
+                                item.forEach(it => Object.keys(it).forEach(k => subKeys.add(k)));
+                                const subKeyList = Array.from(subKeys);
+                                const wrap = document.createElement('div');
+                                wrap.className = 'nested-table-wrap';
+                                const table = document.createElement('table');
+                                table.className = 'json-table';
+                                table.setAttribute('data-array-merged', itemPath);
+                                const thead = document.createElement('thead');
+                                const trHead = document.createElement('tr');
+                                const thExp = document.createElement('th');
+                                thExp.style.width = '36px';
+                                trHead.appendChild(thExp);
+                                subKeyList.forEach(k => {
+                                    const th = document.createElement('th');
+                                    th.textContent = k;
+                                    trHead.appendChild(th);
+                                });
+                                const thAct = document.createElement('th');
+                                thAct.style.width = '80px';
+                                trHead.appendChild(thAct);
+                                thead.appendChild(trHead);
+                                table.appendChild(thead);
+                                const tbody = document.createElement('tbody');
+                                item.forEach((subItem, subIndex) => {
+                                    const tr = document.createElement('tr');
+                                    tr.className = 'data-row';
+                                    tr.setAttribute('data-index', subIndex);
+                                    const tdExp = document.createElement('td');
+                                    const btnExp = document.createElement('button');
+                                    btnExp.type = 'button';
+                                    btnExp.className = 'btn-expand-row';
+                                    btnExp.textContent = '−';
+                                    btnExp.title = 'Comprimi riga';
+                                    btnExp.onclick = () => toggleRowExpanded(tr, btnExp);
+                                    tdExp.appendChild(btnExp);
+                                    tr.appendChild(tdExp);
+                                    const subPath = itemPath + '[' + subIndex + ']';
+                                    subKeyList.forEach(k => {
+                                        const cell = document.createElement('td');
+                                        cell.setAttribute('data-key', subPath + '.' + k);
+                                        appendCellContent(cell, subItem[k], subPath + '.' + k);
+                                        tr.appendChild(cell);
+                                    });
+                                    const tdBtn = document.createElement('td');
+                                    const btnR = document.createElement('button');
+                                    btnR.type = 'button';
+                                    btnR.className = 'btn-array btn-array-remove';
+                                    btnR.textContent = '−';
+                                    btnR.onclick = () => { tr.remove(); updatePreview(); };
+                                    tdBtn.appendChild(btnR);
+                                    tr.appendChild(tdBtn);
+                                    tbody.appendChild(tr);
+                                });
+                                table.appendChild(tbody);
+                                wrap.appendChild(table);
+                                const btnAddSub = document.createElement('button');
+                                btnAddSub.type = 'button';
+                                btnAddSub.className = 'btn-array btn-array-add';
+                                btnAddSub.textContent = '+';
+                                btnAddSub.onclick = () => {
+                                    const newIdx = tbody.querySelectorAll('tr').length;
+                                    const tr = document.createElement('tr');
+                                    tr.className = 'data-row';
+                                    tr.setAttribute('data-index', newIdx);
+                                    const tdExp = document.createElement('td');
+                                    const btnExp = document.createElement('button');
+                                    btnExp.type = 'button';
+                                    btnExp.className = 'btn-expand-row';
+                                    btnExp.textContent = '−';
+                                    btnExp.title = 'Comprimi riga';
+                                    btnExp.onclick = () => toggleRowExpanded(tr, btnExp);
+                                    tdExp.appendChild(btnExp);
+                                    tr.appendChild(tdExp);
+                                    const subPath = itemPath + '[' + newIdx + ']';
+                                    subKeyList.forEach(k => {
+                                        const cell = document.createElement('td');
+                                        cell.setAttribute('data-key', subPath + '.' + k);
+                                        let emptyVal = item.length > 0 && item[0][k] !== undefined && item[0][k] !== null
+                                            ? (typeof item[0][k] === 'number' ? 0 : typeof item[0][k] === 'boolean' ? false : '')
+                                            : '';
+                                        appendCellContent(cell, emptyVal, subPath + '.' + k);
+                                        tr.appendChild(cell);
+                                    });
+                                    const tdBtn = document.createElement('td');
+                                    const btnR = document.createElement('button');
+                                    btnR.type = 'button';
+                                    btnR.className = 'btn-array btn-array-remove';
+                                    btnR.textContent = '−';
+                                    btnR.onclick = () => { tr.remove(); updatePreview(); };
+                                    tdBtn.appendChild(btnR);
+                                    tr.appendChild(tdBtn);
+                                    tbody.appendChild(tr);
+                                    updatePreview();
+                                };
+                                wrap.appendChild(btnAddSub);
+                                li.appendChild(wrap);
+                                const btnRm = document.createElement('button');
+                                btnRm.type = 'button';
+                                btnRm.className = 'btn-array btn-array-remove';
+                                btnRm.textContent = '−';
+                                btnRm.onclick = () => { li.remove(); updatePreview(); };
+                                li.appendChild(btnRm);
+                            } else {
+                                const subUl = document.createElement('ul');
+                                subUl.className = 'cell-array-list';
+                                item.forEach((subItem, subIndex) => {
+                                    const subLi = document.createElement('li');
+                                    subLi.className = 'array-item';
+                                    subLi.setAttribute('data-index', subIndex);
+                                    const subPath = itemPath + '[' + subIndex + ']';
+                                    if (typeof subItem === 'object' && subItem !== null && !Array.isArray(subItem)) {
+                                        const wrap = document.createElement('div');
+                                        wrap.className = 'nested-table-wrap';
+                                        const table = document.createElement('table');
+                                        table.className = 'json-table';
+                                        const thead = document.createElement('thead');
+                                        const trHead = document.createElement('tr');
+                                        Object.keys(subItem).forEach(k => {
+                                            const th = document.createElement('th');
+                                            th.textContent = k;
+                                            trHead.appendChild(th);
+                                        });
+                                        thead.appendChild(trHead);
+                                        table.appendChild(thead);
+                                        const tbody = document.createElement('tbody');
+                                        const tr = document.createElement('tr');
+                                        Object.keys(subItem).forEach(k => {
+                                            const cell = document.createElement('td');
+                                            cell.setAttribute('data-key', subPath + '.' + k);
+                                            appendCellContent(cell, subItem[k], subPath + '.' + k);
+                                            tr.appendChild(cell);
+                                        });
+                                        tbody.appendChild(tr);
+                                        table.appendChild(tbody);
+                                        wrap.appendChild(table);
+                                        subLi.appendChild(wrap);
+                                    } else {
+                                        const input = document.createElement('input');
+                                        input.type = (typeof subItem === 'number') ? 'number' : 'text';
+                                        input.value = subItem === null || subItem === undefined ? '' : subItem;
+                                        input.setAttribute('data-key', subPath);
+                                        input.addEventListener('input', updatePreview);
+                                        subLi.appendChild(input);
+                                    }
+                                    subUl.appendChild(subLi);
+                                });
+                                li.appendChild(subUl);
+                                const btnRm = document.createElement('button');
+                                btnRm.type = 'button';
+                                btnRm.className = 'btn-array btn-array-remove';
+                                btnRm.textContent = '−';
+                                btnRm.onclick = () => { li.remove(); updatePreview(); };
+                                li.appendChild(btnRm);
+                            }
+                        } else {
+                            const input = document.createElement('input');
+                            input.type = (typeof item === 'number') ? 'number' : 'text';
+                            input.value = item === null || item === undefined ? '' : item;
+                            input.setAttribute('data-key', itemPath);
+                            input.addEventListener('input', updatePreview);
+                            li.appendChild(input);
+                            const btnRm = document.createElement('button');
+                            btnRm.type = 'button';
+                            btnRm.className = 'btn-array btn-array-remove';
+                            btnRm.textContent = '−';
+                            btnRm.onclick = () => { li.remove(); updatePreview(); };
+                            li.appendChild(btnRm);
+                        }
+                        ul.appendChild(li);
+                    });
+                    const btnAddLi = document.createElement('button');
+                    btnAddLi.type = 'button';
+                    btnAddLi.className = 'btn-array btn-array-add';
+                    btnAddLi.textContent = '+';
+                    btnAddLi.onclick = () => {
+                        const newIdx = ul.querySelectorAll('.array-item').length;
+                        const itemPath = path + '[' + newIdx + ']';
+                        const li = document.createElement('li');
+                        li.className = 'array-item';
+                        li.setAttribute('data-index', newIdx);
+                        const first = val[0];
+                        if (typeof first === 'object' && first !== null && !Array.isArray(first)) {
+                            const wrap = document.createElement('div');
+                            wrap.className = 'nested-table-wrap';
+                            const table = document.createElement('table');
+                            table.className = 'json-table';
+                            const thead = document.createElement('thead');
+                            const trHead = document.createElement('tr');
+                            Object.keys(first).forEach(k => {
+                                const th = document.createElement('th');
+                                th.textContent = k;
+                                trHead.appendChild(th);
+                            });
+                            thead.appendChild(trHead);
+                            table.appendChild(thead);
+                            const tbody = document.createElement('tbody');
+                            const tr = document.createElement('tr');
+                            Object.keys(first).forEach(k => {
+                                const cell = document.createElement('td');
+                                cell.setAttribute('data-key', itemPath + '.' + k);
+                                appendCellContent(cell, typeof first[k] === 'number' ? 0 : typeof first[k] === 'boolean' ? false : '', itemPath + '.' + k);
+                                tr.appendChild(cell);
+                            });
+                            tbody.appendChild(tr);
+                            table.appendChild(tbody);
+                            wrap.appendChild(table);
+                            li.appendChild(wrap);
+                        } else {
+                            const input = document.createElement('input');
+                            input.type = (typeof first === 'number') ? 'number' : 'text';
+                            input.value = '';
+                            input.setAttribute('data-key', itemPath);
+                            input.addEventListener('input', updatePreview);
+                            li.appendChild(input);
+                        }
+                        const btnRm = document.createElement('button');
+                        btnRm.type = 'button';
+                        btnRm.className = 'btn-array btn-array-remove';
+                        btnRm.textContent = '−';
+                        btnRm.onclick = () => { li.remove(); updatePreview(); };
+                        li.appendChild(btnRm);
+                        ul.appendChild(li);
+                        updatePreview();
+                    };
+                    td.appendChild(ul);
+                    td.appendChild(btnAddLi);
+                }
+            } else if (typeof val === 'object') {
+                td.classList.add('cell-complex');
+                const textarea = document.createElement('textarea');
+                textarea.value = JSON.stringify(val, null, 2);
+                textarea.setAttribute('data-key', path);
+                textarea.addEventListener('input', updatePreview);
+                td.appendChild(textarea);
+            }
+        }
+
+        function getCellValue(cell) {
+            if (!cell) return undefined;
+            const mergedTable = cell.querySelector('.json-table[data-array-merged]');
+            if (mergedTable) return collectArrayFromMergedTable(mergedTable);
+            if (cell.classList.contains('cell-array') && cell.querySelector('.cell-array-list')) {
+                return collectArrayFromCell(cell);
+            }
+            const input = cell.querySelector('input');
+            const textarea = cell.querySelector('textarea');
+            if (input) {
+                if (input.type === 'checkbox') return input.checked;
+                if (input.type === 'number') return parseFloat(input.value) || 0;
+                return input.value;
+            }
+            if (textarea) {
+                try { return JSON.parse(textarea.value); } catch (e) { return textarea.value; }
+            }
+            const nestedTable = cell.querySelector('.nested-table-wrap .json-table');
+            if (nestedTable) return collectObjectFromTable(nestedTable);
+            return undefined;
+        }
+
+        function collectArrayFromMergedTable(table) {
+            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
+            const arr = [];
+            table.querySelectorAll('tbody tr').forEach((row) => {
+                const obj = {};
+                const cells = row.querySelectorAll('td');
+                headers.forEach((fieldName, i) => {
+                    if (i === 0 || i === headers.length - 1 || !fieldName) return;
+                    if (cells[i]) obj[fieldName] = getCellValue(cells[i]);
+                });
+                arr.push(obj);
+            });
+            return arr;
+        }
+
+        function collectArrayFromCell(cell) {
+            const mergedTable = cell.querySelector('.json-table[data-array-merged]');
+            if (mergedTable) return collectArrayFromMergedTable(mergedTable);
+            const ul = cell.querySelector('.cell-array-list');
+            if (!ul) return [];
+            return collectArrayFromList(ul);
+        }
+
+        function collectArrayFromList(ul) {
+            const arr = [];
+            ul.querySelectorAll(':scope > .array-item').forEach((li) => {
+                const tableWrap = li.querySelector(':scope > .nested-table-wrap');
+                const subUl = li.querySelector(':scope > .cell-array-list');
+                const input = li.querySelector('input');
+                if (tableWrap) {
+                    const table = tableWrap.querySelector('.json-table');
+                    if (table) {
+                        if (table.getAttribute('data-array-merged'))
+                            arr.push(collectArrayFromMergedTable(table));
+                        else
+                            arr.push(collectObjectFromTable(table));
+                    }
+                } else if (subUl) {
+                    arr.push(collectArrayFromList(subUl));
+                } else if (input) {
+                    if (input.type === 'checkbox') arr.push(input.checked);
+                    else if (input.type === 'number') arr.push(parseFloat(input.value) || 0);
+                    else arr.push(input.value);
+                }
+            });
+            return arr;
+        }
+
+        function collectObjectFromTable(table) {
+            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
+            const row = table.querySelector('tbody tr');
+            if (!row) return {};
+            const obj = {};
+            const cells = row.querySelectorAll('td');
+            headers.forEach((fieldName, i) => {
+                const cell = cells[i];
+                if (cell) obj[fieldName] = getCellValue(cell);
+            });
+            return obj;
+        }
+
+        function collectDataFromTables() {
+            const root = document.getElementById('tablesContainer');
+            if (!root.getAttribute('data-root')) return currentJsonData;
+
+            const directTable = root.querySelector('.json-table[data-array="root"]');
+            if (directTable) {
+                return collectArrayTableData(directTable);
+            }
+
+            const out = {};
+            const sections = root.querySelectorAll('.table-section');
+            sections.forEach(section => {
+                const key = section.getAttribute('data-key');
+                const table = section.querySelector('.json-table');
+                if (!table) return;
+
+                if (table.getAttribute('data-array')) {
+                    const rows = table.querySelectorAll('tbody tr');
+                    const arr = [];
+                    rows.forEach((row) => {
+                        const cells = row.querySelectorAll('td');
+                        const obj = {};
+                        const headers = table.querySelectorAll('thead th');
+                        cells.forEach((cell, i) => {
+                            const fieldName = headers[i] ? headers[i].textContent : null;
+                            if (fieldName) obj[fieldName] = getCellValue(cell);
+                        });
+                        arr.push(obj);
+                    });
+                    out[key] = arr;
+                } else {
+                    const headerCells = table.querySelectorAll('thead th');
+                    const row = table.querySelector('tbody tr');
+                    if (!row) return;
+                    const obj = {};
+                    const cells = row.querySelectorAll('td');
+                    headerCells.forEach((th, i) => {
+                        const fieldName = th.textContent;
+                        obj[fieldName] = getCellValue(cells[i]);
+                    });
+                    out[key] = obj;
+                }
+            });
+
+            return out;
+        }
+
+        function collectArrayTableData(table) {
+            const rows = table.querySelectorAll('tbody tr');
+            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
+            const arr = [];
+            rows.forEach((row) => {
+                const cells = row.querySelectorAll('td');
+                const obj = {};
+                headers.forEach((fieldName, i) => {
+                    if (i === 0 || i === headers.length - 1 || !fieldName) return;
+                    if (cells[i]) obj[fieldName] = getCellValue(cells[i]);
+                });
+                arr.push(obj);
+            });
+            return arr;
+        }
+
+        function updatePreview() {
+            try {
+                const data = collectDataFromTables();
+                document.getElementById('jsonPreview').textContent = JSON.stringify(data, null, 2);
+            } catch (e) {}
+        }
+
+        document.addEventListener('input', (e) => {
+            if (e.target.matches('input, textarea') && e.target.closest('#tablesContainer')) updatePreview();
+        });
+        document.addEventListener('change', (e) => {
+            if (e.target.matches('input') && e.target.closest('#tablesContainer')) updatePreview();
+        });
+    </script>
+</body>
+</html>
