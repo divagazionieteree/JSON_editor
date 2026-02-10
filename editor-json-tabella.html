@@ -153,11 +153,14 @@
         .json-table input[type="number"],
         .json-table textarea {
             width: 100%;
-            padding: 6px 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 0;
+            margin: 0;
+            border: none;
+            border-radius: 0;
             font-size: 0.9em;
             font-family: inherit;
+            background: transparent;
+            box-shadow: none;
         }
 
         .json-table textarea {
@@ -178,7 +181,7 @@
         .json-table input:focus,
         .json-table textarea:focus {
             outline: none;
-            border-color: #2d5a87;
+            box-shadow: none;
         }
 
         .nested-table-wrap {
@@ -380,6 +383,35 @@
             URL.revokeObjectURL(a.href);
         });
 
+        function cloneStructure(value) {
+            if (value === null) return null;
+            if (value === undefined) return '';
+            if (Array.isArray(value)) {
+                if (value.length === 0) return [];
+                const first = value[0];
+                if (typeof first === 'object' && first !== null && !Array.isArray(first)) {
+                    return [cloneStructure(first)];
+                }
+                return [];
+            }
+            if (typeof value === 'object') {
+                const o = {};
+                for (const k of Object.keys(value)) o[k] = cloneStructure(value[k]);
+                return o;
+            }
+            if (typeof value === 'number') return 0;
+            if (typeof value === 'boolean') return false;
+            return '';
+        }
+
+        function getTemplateValueForNewCell(template) {
+            if (template === undefined || template === null) return '';
+            if (typeof template === 'number') return 0;
+            if (typeof template === 'boolean') return false;
+            if (Array.isArray(template) || (typeof template === 'object')) return cloneStructure(template);
+            return '';
+        }
+
         function renderTables(data) {
             const container = document.getElementById('tablesContainer');
             container.innerHTML = '';
@@ -540,14 +572,9 @@
                 keys.forEach(k => {
                     const td = document.createElement('td');
                     td.setAttribute('data-key', pathPrefix + '[' + newIndex + '].' + k);
-                    let emptyVal = '';
-                    if (arr.length > 0 && arr[0][k] !== undefined && arr[0][k] !== null) {
-                        const v = arr[0][k];
-                        if (typeof v === 'number') emptyVal = 0;
-                        else if (typeof v === 'boolean') emptyVal = false;
-                        else emptyVal = '';
-                    }
-                    appendCellContent(td, emptyVal, pathPrefix + '[' + newIndex + '].' + k);
+                    const templateVal = arr.length > 0 ? arr[0][k] : '';
+                    const newVal = getTemplateValueForNewCell(templateVal);
+                    appendCellContent(td, newVal, pathPrefix + '[' + newIndex + '].' + k);
                     tr.appendChild(td);
                 });
                 const tdBtn = document.createElement('td');
@@ -751,10 +778,9 @@
                         keyList.forEach(k => {
                             const cell = document.createElement('td');
                             cell.setAttribute('data-key', itemPath + '.' + k);
-                            let emptyVal = val.length > 0 && val[0][k] !== undefined && val[0][k] !== null
-                                ? (typeof val[0][k] === 'number' ? 0 : typeof val[0][k] === 'boolean' ? false : '')
-                                : '';
-                            appendCellContent(cell, emptyVal, itemPath + '.' + k);
+                            const templateVal = val.length > 0 ? val[0][k] : '';
+                            const newVal = getTemplateValueForNewCell(templateVal);
+                            appendCellContent(cell, newVal, itemPath + '.' + k);
                             tr.appendChild(cell);
                         });
                         const tdBtn = document.createElement('td');
@@ -891,10 +917,9 @@
                                     subKeyList.forEach(k => {
                                         const cell = document.createElement('td');
                                         cell.setAttribute('data-key', subPath + '.' + k);
-                                        let emptyVal = item.length > 0 && item[0][k] !== undefined && item[0][k] !== null
-                                            ? (typeof item[0][k] === 'number' ? 0 : typeof item[0][k] === 'boolean' ? false : '')
-                                            : '';
-                                        appendCellContent(cell, emptyVal, subPath + '.' + k);
+                                        const templateVal = item.length > 0 ? item[0][k] : '';
+                                        const newVal = getTemplateValueForNewCell(templateVal);
+                                        appendCellContent(cell, newVal, subPath + '.' + k);
                                         tr.appendChild(cell);
                                     });
                                     const tdBtn = document.createElement('td');
@@ -1014,7 +1039,8 @@
                             Object.keys(first).forEach(k => {
                                 const cell = document.createElement('td');
                                 cell.setAttribute('data-key', itemPath + '.' + k);
-                                appendCellContent(cell, typeof first[k] === 'number' ? 0 : typeof first[k] === 'boolean' ? false : '', itemPath + '.' + k);
+                                const newVal = getTemplateValueForNewCell(first[k]);
+                                appendCellContent(cell, newVal, itemPath + '.' + k);
                                 tr.appendChild(cell);
                             });
                             tbody.appendChild(tr);
