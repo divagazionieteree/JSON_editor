@@ -1100,11 +1100,12 @@
         }
 
         function collectArrayFromMergedTable(table) {
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
+            const headers = Array.from(table.querySelectorAll(':scope > thead th')).map(th => th.textContent);
             const arr = [];
-            table.querySelectorAll('tbody tr').forEach((row) => {
+            const tbody = table.querySelector(':scope > tbody');
+            (tbody ? tbody.querySelectorAll(':scope > tr') : []).forEach((row) => {
                 const obj = {};
-                const cells = row.querySelectorAll('td');
+                const cells = row.querySelectorAll(':scope > td');
                 headers.forEach((fieldName, i) => {
                     if (i === 0 || i === headers.length - 1 || !fieldName) return;
                     if (cells[i]) obj[fieldName] = getCellValue(cells[i]);
@@ -1148,11 +1149,11 @@
         }
 
         function collectObjectFromTable(table) {
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
-            const row = table.querySelector('tbody tr');
+            const headers = Array.from(table.querySelectorAll(':scope > thead th')).map(th => th.textContent);
+            const row = table.querySelector(':scope > tbody tr');
             if (!row) return {};
             const obj = {};
-            const cells = row.querySelectorAll('td');
+            const cells = row.querySelectorAll(':scope > td');
             headers.forEach((fieldName, i) => {
                 const cell = cells[i];
                 if (cell) obj[fieldName] = getCellValue(cell);
@@ -1177,12 +1178,13 @@
                 if (!table) return;
 
                 if (table.getAttribute('data-array')) {
-                    const rows = table.querySelectorAll('tbody tr');
+                    const tbody = table.querySelector(':scope > tbody');
+                    const rows = tbody ? tbody.querySelectorAll(':scope > tr') : [];
                     const arr = [];
                     rows.forEach((row) => {
-                        const cells = row.querySelectorAll('td');
+                        const cells = row.querySelectorAll(':scope > td');
                         const obj = {};
-                        const headers = table.querySelectorAll('thead th');
+                        const headers = table.querySelectorAll(':scope > thead th');
                         cells.forEach((cell, i) => {
                             const fieldName = headers[i] ? headers[i].textContent : null;
                             if (fieldName) obj[fieldName] = getCellValue(cell);
@@ -1191,11 +1193,11 @@
                     });
                     out[key] = arr;
                 } else {
-                    const headerCells = table.querySelectorAll('thead th');
-                    const row = table.querySelector('tbody tr');
+                    const headerCells = table.querySelectorAll(':scope > thead th');
+                    const row = table.querySelector(':scope > tbody tr');
                     if (!row) return;
                     const obj = {};
-                    const cells = row.querySelectorAll('td');
+                    const cells = row.querySelectorAll(':scope > td');
                     headerCells.forEach((th, i) => {
                         const fieldName = th.textContent;
                         obj[fieldName] = getCellValue(cells[i]);
@@ -1208,11 +1210,12 @@
         }
 
         function collectArrayTableData(table) {
-            const rows = table.querySelectorAll('tbody tr');
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
+            const tbody = table.querySelector(':scope > tbody');
+            const rows = tbody ? tbody.querySelectorAll(':scope > tr') : [];
+            const headers = Array.from(table.querySelectorAll(':scope > thead th')).map(th => th.textContent);
             const arr = [];
             rows.forEach((row) => {
-                const cells = row.querySelectorAll('td');
+                const cells = row.querySelectorAll(':scope > td');
                 const obj = {};
                 headers.forEach((fieldName, i) => {
                     if (i === 0 || i === headers.length - 1 || !fieldName) return;
